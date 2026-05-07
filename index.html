@@ -3,29 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>八字量化分析终端 V2.4</title>
+  <title>八字量化分析终端 V2.5</title>
   
   <!-- 引入 Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- 引入 React 核心库 (移除 crossorigin 避免严格跨域阻断) -->
-  <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  
-  <!-- 引入 Recharts 图表库及其依赖 -->
-  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
-  <script src="https://unpkg.com/recharts@2.1.12/umd/Recharts.js"></script>
-  
-  <!-- 引入 Lunar 日历库 (更换更稳定的 jsdelivr 源，解决加载失败导致 Solar undefined 的问题) -->
-  <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
-
-  <!-- 引入 Babel -->
-  <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+  <!-- 引入核心依赖库 (全部统一采用全球最稳定的 jsdelivr CDN，并彻底移除 crossorigin 避免严格的安全策略拦截) -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/recharts@2.1.12/umd/Recharts.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js"></script>
 
   <style>
     ::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; cursor: pointer; }
     ::-webkit-calendar-picker-indicator:hover { opacity: 1; }
-    /* 增加古典字体支持 */
+    /* 古典字体支持 */
     .font-serif-bazi { font-family: "Noto Serif SC", "SimSun", "STSong", serif; }
   </style>
 </head>
@@ -33,6 +27,18 @@
   <div id="root"></div>
 
   <script type="text/babel">
+    // 增加严格的加载检测，避免因网络波动导致的白屏报错
+    if (typeof React === 'undefined' || typeof window.Recharts === 'undefined') {
+      document.getElementById('root').innerHTML = `
+        <div style="color: #ef4444; padding: 20px; text-align: center; font-family: sans-serif; margin-top: 50px;">
+          <h2>⚠️ 核心资源加载失败</h2>
+          <p>由于您的网络环境或浏览器安全策略，React 引擎未能成功下载。</p>
+          <p>请刷新页面重试，或尝试关闭广告拦截插件。</p>
+        </div>
+      `;
+      throw new Error("React or Recharts is not defined.");
+    }
+
     const { useState, useEffect, useMemo } = React;
     const { 
       Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -74,6 +80,20 @@
       刑: [['子','卯'], ['卯','子'], ['寅','巳'], ['巳','申'], ['申','寅'], ['丑','未'], ['未','戌'], ['戌','丑'], ['辰','辰'], ['午','午'], ['酉','酉'], ['亥','亥']]
     };
 
+    // 阴阳字典
+    const YANG_CHARS = ['甲', '丙', '戊', '庚', '壬', '子', '寅', '辰', '午', '申', '戌'];
+    const YIN_CHARS = ['乙', '丁', '己', '辛', '癸', '丑', '卯', '巳', '未', '酉', '亥'];
+
+    // 藏干本气五行及阴阳字典（用于十神精确计算）
+    const CHAR_YIN_YANG = {
+      甲:1, 乙:-1, 丙:1, 丁:-1, 戊:1, 己:-1, 庚:1, 辛:-1, 壬:1, 癸:-1,
+      子:-1, 丑:-1, 寅:1, 卯:-1, 辰:1, 巳:1, 午:-1, 未:-1, 申:1, 酉:-1, 戌:1, 亥:1
+    };
+    const WU_XING = {
+      甲:'木', 乙:'木', 丙:'火', 丁:'火', 戊:'土', 己:'土', 庚:'金', 辛:'金', 壬:'水', 癸:'水',
+      子:'水', 丑:'土', 寅:'木', 卯:'木', 辰:'土', 巳:'火', 午:'火', 未:'土', 申:'金', 酉:'金', 戌:'土', 亥:'水'
+    };
+
     function getRelation(dm, target) {
       if (dm === target) return "比劫";
       if (GENERATES[target] === dm) return "印";
@@ -84,6 +104,21 @@
 
     function getController(el) {
       for (let key in CONTROLS) if (CONTROLS[key] === el) return key;
+    }
+
+    // 获取具体的十神名称
+    function getSpecificTenGod(dmChar, targetChar) {
+      let dmEl = WU_XING[dmChar];
+      let tgEl = WU_XING[targetChar];
+      let dmYY = CHAR_YIN_YANG[dmChar];
+      let tgYY = CHAR_YIN_YANG[targetChar];
+      let isSameYY = dmYY === tgYY;
+
+      if (dmEl === tgEl) return isSameYY ? "比肩" : "劫财";
+      if (GENERATES[tgEl] === dmEl) return isSameYY ? "偏印" : "正印";
+      if (GENERATES[dmEl] === tgEl) return isSameYY ? "食神" : "伤官";
+      if (CONTROLS[dmEl] === tgEl) return isSameYY ? "偏财" : "正财";
+      if (CONTROLS[tgEl] === dmEl) return isSameYY ? "七杀" : "正官";
     }
 
     // 获取地支的“本气”
@@ -144,7 +179,7 @@
             <div className="flex flex-col items-center mb-8">
               <ActivityIcon />
               <h1 className="text-2xl font-bold tracking-widest text-slate-100 mt-4">八字量化分析终端</h1>
-              <p className="text-slate-500 text-xs mt-1 font-mono">Bazi Quantitative Model V2.4</p>
+              <p className="text-slate-500 text-xs mt-1 font-mono">Bazi Quantitative Model V2.5</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -220,7 +255,7 @@
         if (R >= 0.3) dmType = '身极强'; else if (R > 0.1) dmType = '身强';
         else if (R <= -0.3) dmType = '身极弱'; else if (R < -0.1) dmType = '身弱';
 
-        // 3. K值 (用于运势环境计算)
+        // 3. K值
         let K = {};
         for (let el of ELEMENTS) {
           let deviation = Math.abs(base[el] - 0.2) / 0.8;
@@ -230,24 +265,63 @@
           K[el] = Number((weight * sign).toFixed(4));
         }
 
-        // --- 核心模块：6. 命局层次评估逻辑 (格局、用神、偏枯) ---
+        // --- 核心模块：6. 命局层次评估逻辑 (格局、用神、阴阳、坏点) ---
         let rankData = { level: '', color: '', desc: '' };
         
-        // 整理排序五行能量
+        // 阴阳平衡检测
+        const baziChars = [pillars.yStem, pillars.yBranch, pillars.mStem, pillars.mBranch, pillars.dStem, pillars.dBranch, pillars.hStem, pillars.hBranch];
+        const isPureYang = baziChars.every(c => YANG_CHARS.includes(c));
+        const isPureYin = baziChars.every(c => YIN_CHARS.includes(c));
+        const isSpecialGender = (gender === 'M' && isPureYin) || (gender === 'F' && isPureYang);
+
+        // 贴身相克 (坏点探测: 财星坏印, 伤官见官, 枭神夺食)
+        let badAlerts = [];
+        const checkCombo = (c1, c2) => {
+            if (!c1 || !c2) return;
+            let tg1 = getSpecificTenGod(pillars.dStem, c1);
+            let tg2 = getSpecificTenGod(pillars.dStem, c2);
+            let combo = [tg1, tg2];
+            
+            // 财星坏印 (正偏财 见 正偏印)
+            let hasCai = combo.includes('正财') || combo.includes('偏财');
+            let hasYin = combo.includes('正印') || combo.includes('偏印');
+            if (hasCai && hasYin) badAlerts.push('财星坏印');
+            
+            // 伤官见官 (必须是伤官见正官)
+            if (combo.includes('伤官') && combo.includes('正官')) badAlerts.push('伤官见官');
+            
+            // 枭神夺食 (必须是偏印见食神)
+            if (combo.includes('偏印') && combo.includes('食神')) badAlerts.push('枭神夺食');
+        };
+        // 同柱上下克战
+        checkCombo(pillars.yStem, pillars.yBranch);
+        checkCombo(pillars.mStem, pillars.mBranch);
+        checkCombo(pillars.dStem, pillars.dBranch);
+        checkCombo(pillars.hStem, pillars.hBranch);
+        // 贴身干支相克 (天干相邻, 地支相邻)
+        checkCombo(pillars.yStem, pillars.mStem); // 年月干
+        checkCombo(pillars.yBranch, pillars.mBranch); // 年月支
+        checkCombo(pillars.mBranch, pillars.dBranch); // 月日支
+        checkCombo(pillars.dBranch, pillars.hBranch); // 日时支
+        
+        badAlerts = [...new Set(badAlerts)];
+        let badPointsCount = badAlerts.length;
+
+        // 五行力量排序
         let sortedBase = ELEMENTS.map(el => ({ el, val: base[el] })).sort((a, b) => b.val - a.val);
         let top2Sum = sortedBase[0].val + sortedBase[1].val;
+        let thirdVal = sortedBase.length > 2 ? sortedBase[2].val : 0;
         
-        // 甄别原局用神 (K值>0的元素，且在原局中真实存在的力量)
+        // 甄别原局用神
         let yongShens = ELEMENTS.filter(el => K[el] > 0);
         let yongShenPower = yongShens.reduce((sum, el) => sum + base[el], 0);
 
-        // 检测原局内部冲克，是否伤及用神所在的地支
+        // 检测用神是否被冲
         const internalPillars = [pillars.yBranch, pillars.mBranch, pillars.dBranch, pillars.hBranch];
         let clashedYongShen = false;
         for(let i=0; i<internalPillars.length; i++){
           for(let j=i+1; j<internalPillars.length; j++){
              if (checkZhiRelation(internalPillars[i], internalPillars[j]).includes('冲')) {
-                // 如果冲的两个地支中，任意一个包含用神，则判为用神受冲
                 let hasYsInI = yongShens.some(el => BRANCHES[internalPillars[i]][el] !== undefined);
                 let hasYsInJ = yongShens.some(el => BRANCHES[internalPillars[j]][el] !== undefined);
                 if (hasYsInI || hasYsInJ) clashedYongShen = true;
@@ -255,27 +329,56 @@
           }
         }
 
-        // 瀑布流判断层次
-        if (top2Sum >= 0.85) {
+        // 瀑布流判断定级
+        let rawRank = 0; // 5:夯, 4:顶级, 3:人上人, 2:NPC, 1:拉完了
+        
+        if (top2Sum >= 0.80 && thirdVal < 0.20) {
+            rawRank = 5;
+        } else if (yongShenPower <= 0.05 || (yongShenPower <= 0.15 && clashedYongShen)) {
+            rawRank = 1;
+        } else if (yongShenPower > 0.35 && !clashedYongShen) {
+            rawRank = 4;
+        } else if ((yongShenPower > 0.35 && clashedYongShen) || (yongShenPower > 0.20 && yongShenPower <= 0.35)) {
+            rawRank = 3;
+        } else {
+            rawRank = 2;
+        }
+
+        // 坏点降级惩罚
+        if (rawRank >= 3 && badPointsCount > 0) {
+            rawRank = 2; // 遭遇核心十神贴身相克，从高层直降为 NPC
+        } else if (rawRank === 2 && badPointsCount > 1) {
+            rawRank = 1; // 本就平庸还多个坏点打架，降为最低
+        }
+
+        // 写入最终评级描述
+        if (rawRank === 5) {
           rankData.level = "夯 (特殊格局)";
           rankData.color = "text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]";
-          rankData.desc = `原局五行极度偏枯，【${sortedBase[0].el}】与【${sortedBase[1].el}】两行能量占比高达 ${(top2Sum*100).toFixed(1)}%，构成“两气成象”或“专旺/从格”等特殊命局，气势磅礴，不受常理生克约束，需作特殊谈判。`;
-        } else if (yongShenPower <= 0.05 || (yongShenPower <= 0.15 && clashedYongShen)) {
-          rankData.level = "拉完了 (气浊神枯)";
-          rankData.color = "text-slate-500 drop-shadow-[0_0_5px_rgba(100,116,139,0.8)]";
-          rankData.desc = `用神（${yongShens.join('、')}）在命局中极为微弱或完全不见，且忌神猖狂。用神无力且遇冲克，属“气浊神枯”之象。人生路途多艰，凡事需付出极大后天努力方能有所成。`;
-        } else if (yongShenPower > 0.35 && !clashedYongShen) {
+          rankData.desc = `原局五行极度偏枯，【${sortedBase[0].el}】与【${sortedBase[1].el}】两行能量占比高达 ${(top2Sum*100).toFixed(1)}%，构成“两行成象”或“专旺/从格”等极度特殊的命局。气势磅礴，不受常理生克约束，需作特别谈判。`;
+        } else if (rawRank === 4) {
           rankData.level = "顶级 (格局大好)";
           rankData.color = "text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]";
-          rankData.desc = `用神（${yongShens.join('、')}）在原局中极具力量（占比 ${(yongShenPower*100).toFixed(1)}%），且通根有源，不受刑冲破害损伤。用神有情有力，犹如顺水推舟，格局极高。`;
-        } else if ((yongShenPower > 0.35 && clashedYongShen) || (yongShenPower > 0.20 && yongShenPower <= 0.35)) {
+          rankData.desc = `用神（${yongShens.join('、')}）在原局中极具力量（占比 ${(yongShenPower*100).toFixed(1)}%），且不受刑冲破害及贴身克破损伤。用神有情有力，犹如顺水推舟，格局极高。`;
+        } else if (rawRank === 3) {
           rankData.level = "人上人 (中高层次)";
           rankData.color = "text-orange-400 drop-shadow-[0_0_10px_rgba(251,146,60,0.6)]";
-          rankData.desc = `用神（${yongShens.join('、')}）在原局中颇具力量（占比 ${(yongShenPower*100).toFixed(1)}%）${clashedYongShen ? '，虽略带冲克损伤' : '，属中等偏上水准'}。总体格局优良，只要大运岁运配合得当，极易脱颖而出。`;
-        } else {
+          rankData.desc = `用神（${yongShens.join('、')}）颇具力量（占比 ${(yongShenPower*100).toFixed(1)}%）${clashedYongShen ? '，虽略带地支冲克' : '，属中上水准'}。总体格局优良，只要大运岁运配合得当，极易脱颖而出。`;
+        } else if (rawRank === 2) {
           rankData.level = "NPC (普罗大众)";
           rankData.color = "text-slate-300 drop-shadow-[0_0_5px_rgba(203,213,225,0.8)]";
-          rankData.desc = `用神（${yongShens.join('、')}）在原局中偏弱（占比 ${(yongShenPower*100).toFixed(1)}%），帮扶力较为有限。格局常态，属于大多数人的剧本，需安分守己，步步为营以待时机。`;
+          rankData.desc = `用神（${yongShens.join('、')}）偏弱或平平。${badPointsCount > 0 ? `且原局存在【贴身相克】（${badAlerts.join('、')}），导致用神或格局受损降级。` : ''}格局常态，属于大多数人的剧本，需安分守己，步步为营以待时机。`;
+        } else {
+          rankData.level = "拉完了 (气浊神枯)";
+          rankData.color = "text-slate-500 drop-shadow-[0_0_5px_rgba(100,116,139,0.8)]";
+          rankData.desc = `用神微弱或完全不见，且忌神猖狂。${badPointsCount > 0 ? `叠加【贴身相克】（${badAlerts.join('、')}），内部力量严重相互打架消耗。` : ''}属“气浊神枯”之象。人生路途多艰，需付出极大后天努力方能有所成。`;
+        }
+
+        // 阴阳异象标记
+        if (isSpecialGender) {
+           rankData.desc = `⚠️【异象预警】：您属于“${gender === 'M' ? '男命纯阴' : '女命纯阳'}”，违背自然阴阳交泰之道。此类命盘气场特殊，极易出现大起大落的反常规人生，层次不能单凭常理给级，必须结合大运重新定夺！\n\n` + rankData.desc;
+           rankData.level += " (另评)";
+           rankData.color = "text-purple-400 drop-shadow-[0_0_10px_rgba(192,132,252,0.8)]";
         }
 
         // 4. 环境计算函数
@@ -308,7 +411,6 @@
         
         let reportSections = [];
 
-        // 5.1 星位落点推演
         let starPositions = [];
         if (checkHasStar(pillars.yStem, pillars.yBranch)) starPositions.push('年柱(根基)');
         if (checkHasStar(pillars.mStem, pillars.mBranch)) starPositions.push('月柱(父母兄弟宫)');
@@ -326,7 +428,6 @@
           text: `命主为${gender === 'M' ? '男' : '女'}，日主为${dmElement}，代表配偶的【${spouseStarName}】五行为【${spouseStar}】。${starPositions.length > 0 ? `该星落于${starPositions.join('、')}。` : ''}${marriageTiming}`
         });
 
-        // 5.2 原局夫妻宫深度解析
         let spousePalace = pillars.dBranch;
         let mRels = checkZhiRelation(spousePalace, pillars.mBranch);
         let hRels = checkZhiRelation(spousePalace, pillars.hBranch);
@@ -375,7 +476,6 @@
           text: originalPalaceTexts.join(' ')
         });
 
-        // 5.3 岁运时空交会点
         let dyRels = checkZhiRelation(spousePalace, activeDaYun.branch);
         let lnRels = checkZhiRelation(spousePalace, activeLiuNian.branch);
         
@@ -415,7 +515,6 @@
         };
       }, [baziModel, activeDyIdx, activeLnIdx]);
 
-      // 图表数据格式化
       const maxBaseVal = Math.max(...ELEMENTS.map(el => quantData.base[el]));
       const radarDomainMax = Math.max(0.5, Math.ceil(maxBaseVal * 10) / 10);
       const radarData = ELEMENTS.map(el => ({ subject: el, A: Number(quantData.base[el].toFixed(3)), fullMark: radarDomainMax }));
@@ -435,7 +534,7 @@
                 <ArrowLeftIcon />
               </button>
               <div>
-                <h1 className="text-xl font-bold tracking-wider text-slate-100 flex items-center">八字量化分析终端 <span className="text-xs bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded ml-3 font-mono">V 2.4</span></h1>
+                <h1 className="text-xl font-bold tracking-wider text-slate-100 flex items-center">八字量化分析终端 <span className="text-xs bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded ml-3 font-mono">V 2.5</span></h1>
                 <div className="text-xs text-slate-500 mt-1">
                   性别：{baziModel.gender === 'M' ? '乾造 (男)' : '坤造 (女)'}
                 </div>
@@ -457,8 +556,6 @@
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-6">
-            
-            {/* 四柱原局展示大屏 (占比 7列) */}
             <div className="xl:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden flex flex-col">
               <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-600"></div>
               <div className="flex items-center justify-between mb-4 pl-4">
@@ -471,7 +568,6 @@
               </div>
 
               <div className="flex justify-around items-center w-full px-2 mt-auto mb-auto">
-                
                 {/* 年柱 */}
                 <div className="flex flex-col items-center p-3 sm:p-4 bg-slate-800/30 rounded-xl border border-slate-700/50 w-20 sm:w-24 shadow-inner">
                   <span className="text-xs text-slate-500 mb-3 tracking-widest">年柱</span>
@@ -482,7 +578,6 @@
                     {baziModel.pillars.yBranch}
                   </span>
                 </div>
-
                 {/* 月柱 */}
                 <div className="flex flex-col items-center p-3 sm:p-4 bg-slate-800/30 rounded-xl border border-slate-700/50 w-20 sm:w-24 shadow-inner">
                   <span className="text-xs text-slate-500 mb-3 tracking-widest">月柱</span>
@@ -493,8 +588,7 @@
                     {baziModel.pillars.mBranch}
                   </span>
                 </div>
-
-                {/* 日柱 (高亮) */}
+                {/* 日柱 */}
                 <div className="flex flex-col items-center p-3 sm:p-4 bg-slate-800/60 rounded-xl border-2 border-cyan-700/50 w-24 sm:w-28 shadow-[0_0_20px_rgba(8,145,178,0.15)] transform scale-105">
                   <span className="text-[10px] sm:text-xs text-cyan-400 mb-3 tracking-widest">日主({STEMS[baziModel.pillars.dStem]})</span>
                   <span className={`text-3xl sm:text-4xl font-serif-bazi font-bold mb-3 ${getElementColorClass(STEMS[baziModel.pillars.dStem])}`}>
@@ -504,7 +598,6 @@
                     {baziModel.pillars.dBranch}
                   </span>
                 </div>
-
                 {/* 时柱 */}
                 <div className="flex flex-col items-center p-3 sm:p-4 bg-slate-800/30 rounded-xl border border-slate-700/50 w-20 sm:w-24 shadow-inner">
                   <span className="text-xs text-slate-500 mb-3 tracking-widest">时柱</span>
@@ -515,11 +608,10 @@
                     {baziModel.pillars.hBranch}
                   </span>
                 </div>
-
               </div>
             </div>
 
-            {/* 命局层次评估卡片 (占比 5列) */}
+            {/* 命局层次评估卡片 */}
             <div className="xl:col-span-5 bg-slate-900 border border-yellow-900/40 rounded-xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-center">
               <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-yellow-500 to-orange-500"></div>
               <h2 className="text-base font-bold text-yellow-500 mb-4 flex items-center tracking-widest">
@@ -527,18 +619,17 @@
               </h2>
               <div className="flex flex-col items-center justify-center bg-slate-950/50 p-5 rounded-lg border border-slate-800/50 mb-3 shadow-inner">
                 <div className="text-xs text-slate-500 mb-2">系统综合判定量级</div>
-                <div className={`text-4xl font-black font-mono tracking-widest ${quantData.rankData.color}`}>
+                <div className={`text-3xl sm:text-4xl font-black font-mono tracking-widest ${quantData.rankData.color}`}>
                   {quantData.rankData.level}
                 </div>
               </div>
-              <div className="text-slate-300 text-sm leading-relaxed tracking-wide opacity-90 px-1">
+              <div className="text-slate-300 text-[13px] leading-relaxed tracking-wide opacity-90 px-1 whitespace-pre-wrap">
                 {quantData.rankData.desc}
               </div>
             </div>
 
           </div>
 
-          {/* 核心指标与预警 */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-6">
             <div className="xl:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl flex flex-col justify-center items-center relative overflow-hidden">
               <div className="text-slate-400 text-sm mb-1">年度运势 S_t <span className="text-xs text-slate-500 ml-1">({quantData.activeLiuNian.year}年)</span></div>
@@ -580,7 +671,6 @@
             </div>
           </div>
 
-          {/* 图表展示区 */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
             <div className="xl:col-span-8 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl h-[450px]">
               <h2 className="text-sm font-bold text-slate-400 mb-2">【{quantData.activeDaYun.stem}{quantData.activeDaYun.branch}大运】 10年运势波动曲线</h2>
@@ -592,7 +682,6 @@
                   <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff' }} itemStyle={{ color: '#e2e8f0' }} />
                   <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
                   
-                  {/* 高亮当前选中的流年 */}
                   <ReferenceLine x={`${quantData.activeLiuNian.year}\n${quantData.activeLiuNian.stem}${quantData.activeLiuNian.branch}`} stroke="#06b6d4" strokeDasharray="3 3" label={{ position: 'top', value: 'Target', fill: '#06b6d4', fontSize: 12, fontWeight: 'bold' }} />
                   
                   <Line type="monotone" dataKey="score" name="总运势分" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', stroke: '#0f172a', strokeWidth: 2 }} activeDot={{ r: 6 }} />
@@ -622,13 +711,11 @@
       );
     }
 
-    // --- 主应用控制 ---
     function App() {
       const [view, setView] = useState('input');
       const [baziModel, setBaziModel] = useState(null);
 
       const generateModel = (formData) => {
-        // 防止日历库加载失败导致的报错
         if (typeof Solar === 'undefined' || !Solar) {
           alert('日历核心库加载失败，请检查网络连接或稍后刷新页面重试。');
           return;
