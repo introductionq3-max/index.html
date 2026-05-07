@@ -8,7 +8,7 @@
   <!-- 引入 Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- 引入核心依赖库 (全部统一采用全球最稳定的 jsdelivr CDN，并彻底移除 crossorigin 避免严格的安全策略拦截) -->
+  <!-- 引入核心依赖库 -->
   <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
@@ -27,7 +27,6 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    // 增加严格的加载检测，避免因网络波动导致的白屏报错
     if (typeof React === 'undefined' || typeof window.Recharts === 'undefined') {
       document.getElementById('root').innerHTML = `
         <div style="color: #ef4444; padding: 20px; text-align: center; font-family: sans-serif; margin-top: 50px;">
@@ -307,11 +306,32 @@
         badAlerts = [...new Set(badAlerts)];
         let badPointsCount = badAlerts.length;
 
+        // 【新增核心检测】表面八字五行统计 (不看藏干杂气，用于最高优先级判定特殊格局)
+        const surfaceElements = [
+          WU_XING[pillars.yStem], getDominantElement(pillars.yBranch),
+          WU_XING[pillars.mStem], getDominantElement(pillars.mBranch),
+          WU_XING[pillars.dStem], getDominantElement(pillars.dBranch),
+          WU_XING[pillars.hStem], getDominantElement(pillars.hBranch)
+        ];
+        let surfaceCounts = {};
+        surfaceElements.forEach(el => surfaceCounts[el] = (surfaceCounts[el] || 0) + 1);
+        let sortedSurface = Object.entries(surfaceCounts).sort((a, b) => b[1] - a[1]);
+        let surfaceTop2Sum = sortedSurface[0][1] + (sortedSurface.length > 1 ? sortedSurface[1][1] : 0);
+        let isSurfaceHang = surfaceTop2Sum >= 7; // 8个字里有7个以上属于前两大五行
+
         // 五行力量排序
         let sortedBase = ELEMENTS.map(el => ({ el, val: base[el] })).sort((a, b) => b.val - a.val);
         let top2Sum = sortedBase[0].val + sortedBase[1].val;
         let thirdVal = sortedBase.length > 2 ? sortedBase[2].val : 0;
         
+        // 获取全局出现的本气五行种类数量
+        let chartElements = new Set([
+          WU_XING[pillars.yStem], getDominantElement(pillars.yBranch),
+          WU_XING[pillars.mStem], getDominantElement(pillars.mBranch),
+          WU_XING[pillars.dStem], getDominantElement(pillars.dBranch),
+          WU_XING[pillars.hStem], getDominantElement(pillars.hBranch)
+        ]);
+
         // 甄别原局用神
         let yongShens = ELEMENTS.filter(el => K[el] > 0);
         let yongShenPower = yongShens.reduce((sum, el) => sum + base[el], 0);
@@ -332,7 +352,8 @@
         // 瀑布流判断定级
         let rawRank = 0; // 5:夯, 4:顶级, 3:人上人, 2:NPC, 1:拉完了
         
-        if (top2Sum >= 0.80 && thirdVal < 0.20) {
+        // 【修正规则】优先判定夯：原局表面字有7个及以上是最多两种五行，或者权重计算极度偏枯
+        if (isSurfaceHang || (top2Sum >= 0.80 && thirdVal < 0.20 && chartElements.size <= 3)) {
             rawRank = 5;
         } else if (yongShenPower <= 0.05 || (yongShenPower <= 0.15 && clashedYongShen)) {
             rawRank = 1;
@@ -344,8 +365,8 @@
             rawRank = 2;
         }
 
-        // 坏点降级惩罚
-        if (rawRank >= 3 && badPointsCount > 0) {
+        // 【新增规则】坏点降级惩罚 (严格排除 夯 格局，免除其常规降级)
+        if (rawRank >= 3 && rawRank < 5 && badPointsCount > 0) {
             rawRank = 2; // 遭遇核心十神贴身相克，从高层直降为 NPC
         } else if (rawRank === 2 && badPointsCount > 1) {
             rawRank = 1; // 本就平庸还多个坏点打架，降为最低
@@ -353,9 +374,13 @@
 
         // 写入最终评级描述
         if (rawRank === 5) {
+          let mainElsStr = sortedSurface[0][0];
+          if (sortedSurface.length > 1 && sortedSurface[1][1] > 0) {
+              mainElsStr += `】与【${sortedSurface[1][0]}`;
+          }
           rankData.level = "夯 (特殊格局)";
           rankData.color = "text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]";
-          rankData.desc = `原局五行极度偏枯，【${sortedBase[0].el}】与【${sortedBase[1].el}】两行能量占比高达 ${(top2Sum*100).toFixed(1)}%，构成“两行成象”或“专旺/从格”等极度特殊的命局。气势磅礴，不受常理生克约束，需作特别谈判。`;
+          rankData.desc = `原局五行极度纯粹，天干与地支本气主要由【${mainElsStr}】主导（占据全局 ${surfaceTop2Sum}/8 的绝对数量）。构成“两气成象”或“专旺/从格”等极度特殊的命局。气势磅礴，不受常规生克与藏干杂气约束，已优先免除系统降级惩罚，直接定级为夯。`;
         } else if (rawRank === 4) {
           rankData.level = "顶级 (格局大好)";
           rankData.color = "text-red-500 drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]";
