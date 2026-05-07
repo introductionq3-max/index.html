@@ -3,38 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>八字量化分析终端</title>
+  <title>八字量化分析终端 V2</title>
   
   <!-- 引入 Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- 引入 React 核心库 (锁定极其稳定的 18.2.0 版本) -->
+  <!-- 引入 React 核心库 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
   
-  <!-- 引入 Recharts 图表库及依赖 (锁定稳定的 2.1.12 版本，防止最新版崩溃) -->
+  <!-- 引入 Recharts 图表库 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.1.12/Recharts.js" crossorigin></script>
   
-  <!-- 引入 Babel 实时编译器 -->
+  <!-- 引入 Lunar 日历库 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lunar-javascript/1.6.12/lunar.min.js"></script>
+
+  <!-- 引入 Babel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+  <style>
+    ::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; cursor: pointer; }
+    ::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-200">
+<body class="bg-slate-950 text-slate-200 min-h-screen">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useMemo } = React;
     const { 
       Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
       BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
       LineChart, Line, ReferenceLine, Cell
     } = window.Recharts;
 
-    // --- 图标组件 (内联 SVG 以保证在无外部构建工具时绝对可用) ---
+    // --- 图标组件 ---
     const ActivityIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>;
-    const DatabaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>;
-    const ZapIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
     const ShieldAlertIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500 mb-2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+    const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-pink-500"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>;
+    const ArrowLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>;
+    const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-500 mr-2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+    const InfoIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-cyan-400"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
+    const AlertCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-rose-400"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
 
     // --- 常量与基础数据字典 ---
     const ELEMENTS = ["木", "火", "土", "金", "水"];
@@ -48,8 +59,15 @@
     const WEIGHTS = { year_stem: 0.05, year_branch: 0.05, month_stem: 0.15, month_branch: 0.40, day_stem: 0.00, day_branch: 0.20, hour_stem: 0.10, hour_branch: 0.05 };
     const GENERATES = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
     const CONTROLS = { 木: "土", 土: "水", 水: "火", 火: "金", 金: "木" };
-    const STEMS_LIST = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
-    const BRANCHES_LIST = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+
+    const ZHI_RELATIONS = {
+      合: [['子','丑'], ['寅','亥'], ['卯','戌'], ['辰','酉'], ['巳','申'], ['午','未']],
+      半合: [['申','子'], ['子','辰'], ['寅','午'], ['午','戌'], ['巳','酉'], ['酉','丑'], ['亥','卯'], ['卯','未']],
+      冲: [['子','午'], ['丑','未'], ['寅','申'], ['卯','酉'], ['辰','戌'], ['巳','亥']],
+      害: [['子','未'], ['丑','午'], ['寅','巳'], ['卯','辰'], ['申','亥'], ['酉','戌']],
+      破: [['子','酉'], ['寅','亥'], ['辰','丑'], ['午','卯'], ['申','巳'], ['戌','未']],
+      刑: [['子','卯'], ['卯','子'], ['寅','巳'], ['巳','申'], ['申','寅'], ['丑','未'], ['未','戌'], ['戌','丑'], ['辰','辰'], ['午','午'], ['酉','酉'], ['亥','亥']]
+    };
 
     function getRelation(dm, target) {
       if (dm === target) return "比劫";
@@ -59,91 +77,241 @@
       if (CONTROLS[target] === dm) return "官杀";
     }
 
-    function getPillarOffset(baseStem, baseBranch, offset) {
-      let sIdx = STEMS_LIST.indexOf(baseStem);
-      let bIdx = BRANCHES_LIST.indexOf(baseBranch);
-      return {
-        stem: STEMS_LIST[(sIdx + offset + 100) % 10],
-        branch: BRANCHES_LIST[(bIdx + offset + 120) % 12]
-      };
+    function getController(el) {
+      for (let key in CONTROLS) if (CONTROLS[key] === el) return key;
     }
 
-    function App() {
-      const [inputs, setInputs] = useState({
-        yStem: '甲', yBranch: '子', mStem: '丙', mBranch: '寅', dStem: '戊', dBranch: '辰',
-        hStem: '庚', hBranch: '申', dyStem: '壬', dyBranch: '戌', dyYear: 1, lnStem: '乙', lnBranch: '巳'
-      });
-      const [quantData, setQuantData] = useState(null);
+    function checkZhiRelation(z1, z2) {
+      let rels = [];
+      for (const [type, pairs] of Object.entries(ZHI_RELATIONS)) {
+        for (const pair of pairs) {
+          if ((pair[0] === z1 && pair[1] === z2) || (pair[0] === z2 && pair[1] === z1 && type !== '刑')) rels.push(type);
+          else if (type === '刑' && pair[0] === z1 && pair[1] === z2) rels.push(type);
+        }
+      }
+      return [...new Set(rels)];
+    }
 
-      const runQuantAnalysis = () => {
+    // --- 组件一：输入页面 ---
+    function InputView({ onGenerate }) {
+      const [formData, setFormData] = useState({
+        date: '1995-05-15',
+        time: '14:30',
+        gender: 'M'
+      });
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        onGenerate(formData);
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-slate-950">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-600/20 blur-[100px] rounded-full pointer-events-none"></div>
+          
+          <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-md border border-slate-700/50 p-8 rounded-2xl shadow-2xl relative z-10">
+            <div className="flex flex-col items-center mb-8">
+              <ActivityIcon />
+              <h1 className="text-2xl font-bold tracking-widest text-slate-100 mt-4">八字量化分析终端</h1>
+              <p className="text-slate-500 text-xs mt-1 font-mono">Bazi Quantitative Model V2.1</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="flex justify-center mb-6 border-b border-slate-700 pb-6">
+                <div className="bg-slate-800 p-1 rounded-lg flex shadow-inner">
+                  <button type="button" onClick={() => setFormData({...formData, gender: 'M'})} className={`px-6 py-2 text-sm font-bold rounded-md transition-all ${formData.gender === 'M' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>男 命 (M)</button>
+                  <button type="button" onClick={() => setFormData({...formData, gender: 'F'})} className={`px-6 py-2 text-sm font-bold rounded-md transition-all ${formData.gender === 'F' ? 'bg-pink-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>女 命 (F)</button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-2 block flex items-center"><CalendarIcon /> 出生日期 (公历)</label>
+                <input 
+                  type="date" 
+                  value={formData.date}
+                  onChange={e => setFormData({...formData, date: e.target.value})}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-slate-100 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-2 block flex items-center"><CalendarIcon /> 出生时间</label>
+                <input 
+                  type="time" 
+                  value={formData.time}
+                  onChange={e => setFormData({...formData, time: e.target.value})}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-slate-100 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono"
+                  required
+                />
+              </div>
+
+              <button type="submit" className="w-full mt-8 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-cyan-900/30 transition-all active:scale-95 flex justify-center items-center tracking-widest">
+                初始化量化模型
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // --- 组件二：结果仪表盘 ---
+    function ResultDashboard({ baziModel, onBack }) {
+      const [activeDyIdx, setActiveDyIdx] = useState(baziModel.defaultDyIdx);
+      const [activeLnIdx, setActiveLnIdx] = useState(baziModel.defaultLnIdx);
+
+      const handleDyChange = (e) => {
+        setActiveDyIdx(Number(e.target.value));
+        setActiveLnIdx(0);
+      };
+
+      const quantData = useMemo(() => {
+        const { pillars, daYuns, dmElement, gender } = baziModel;
+        const activeDaYun = daYuns[activeDyIdx];
+        const activeLiuNian = activeDaYun.liuNians[activeLnIdx];
+        const dyYearOffset = activeLnIdx + 1;
+
+        // 1. 命局基座
         let base = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 };
-        
-        ['y', 'm', 'h'].forEach(pos => {
-          base[STEMS[inputs[`${pos}Stem`]]] += WEIGHTS[`${pos==='y'?'year':pos==='m'?'month':'hour'}_stem`];
-        });
-        
+        ['y', 'm', 'h'].forEach(pos => base[STEMS[pillars[`${pos}Stem`]]] += WEIGHTS[`${pos==='y'?'year':pos==='m'?'month':'hour'}_stem`]);
         ['y', 'm', 'd', 'h'].forEach(pos => {
-          let branchData = BRANCHES[inputs[`${pos}Branch`]];
+          let branchData = BRANCHES[pillars[`${pos}Branch`]];
           let weight = WEIGHTS[`${pos==='y'?'year':pos==='m'?'month':pos==='d'?'day':'hour'}_branch`];
           for (let el in branchData) base[el] += branchData[el] * weight;
         });
 
-        let dmElement = STEMS[inputs.dStem];
+        // 2. 日主强弱
         let rComponents = { 比劫: 0, 印: 0, 食伤: 0, 财: 0, 官杀: 0 };
         for (let el of ELEMENTS) rComponents[getRelation(dmElement, el)] += base[el];
-        
         let R = (rComponents['比劫'] + rComponents['印']) - (rComponents['食伤'] + rComponents['财'] + rComponents['官杀']);
         let isStrong = R > 0;
-
         let dmType = '均衡';
-        if (R >= 0.3) dmType = '身极强';
-        else if (R > 0.1) dmType = '身强';
-        else if (R <= -0.3) dmType = '身极弱';
-        else if (R < -0.1) dmType = '身弱';
+        if (R >= 0.3) dmType = '身极强'; else if (R > 0.1) dmType = '身强';
+        else if (R <= -0.3) dmType = '身极弱'; else if (R < -0.1) dmType = '身弱';
 
+        // 3. K值
         let K = {};
-        const AVG = 0.2, MAX_DEV = 0.8;
         for (let el of ELEMENTS) {
-          let deviation = Math.abs(base[el] - AVG) / MAX_DEV;
+          let deviation = Math.abs(base[el] - 0.2) / 0.8;
           let weight = deviation + 0.15;
           let rel = getRelation(dmElement, el);
           let sign = isStrong ? (['财', '官杀', '食伤'].includes(rel) ? 1 : -1) : (['印', '比劫'].includes(rel) ? 1 : -1);
           K[el] = Number((weight * sign).toFixed(4));
         }
 
-        const calcEnv = (dyStem, dyBranch, dyYear, lnStem, lnBranch) => {
+        // 4. 环境计算函数
+        const calcEnv = (dyStem, dyBranch, offsetYear, lnStem, lnBranch) => {
           let D = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 }, Y = { 木: 0, 火: 0, 土: 0, 金: 0, 水: 0 };
-          D[STEMS[dyStem]] += (10 - dyYear) * 1.0;
-          for (let el in BRANCHES[dyBranch]) D[el] += dyYear * BRANCHES[dyBranch][el];
+          D[STEMS[dyStem]] += (10 - offsetYear) * 1.0;
+          for (let el in BRANCHES[dyBranch]) D[el] += offsetYear * BRANCHES[dyBranch][el];
           Y[STEMS[lnStem]] += 4.0;
           for (let el in BRANCHES[lnBranch]) Y[el] += 6.0 * BRANCHES[lnBranch][el];
 
-          let score = 0, dContribution = 0, yContribution = 0;
+          let score = 0, dCont = 0, yCont = 0;
           for (let el of ELEMENTS) {
-            dContribution += 0.6 * K[el] * D[el];
-            yContribution += 0.4 * K[el] * Y[el];
+            dCont += 0.6 * K[el] * D[el];
+            yCont += 0.4 * K[el] * Y[el];
           }
-          return { D, Y, score: dContribution + yContribution, dContribution, yContribution };
+          return { D, Y, score: dCont + yCont, dScore: dCont, yScore: yCont };
         };
 
-        let currentEnv = calcEnv(inputs.dyStem, inputs.dyBranch, inputs.dyYear, inputs.lnStem, inputs.lnBranch);
+        let currentEnv = calcEnv(activeDaYun.stem, activeDaYun.branch, dyYearOffset, activeLiuNian.stem, activeLiuNian.branch);
+
+        let projectionData = activeDaYun.liuNians.map((ln, idx) => {
+          let env = calcEnv(activeDaYun.stem, activeDaYun.branch, idx + 1, ln.stem, ln.branch);
+          return { year: `${ln.year}\n${ln.stem}${ln.branch}`, score: Number(env.score.toFixed(2)), dScore: Number(env.dScore.toFixed(2)), yScore: Number(env.yScore.toFixed(2)) };
+        });
+
+        // 5. 【优化】感情婚姻量化模块
+        let spouseStar = gender === 'M' ? CONTROLS[dmElement] : getController(dmElement);
+        let spouseStarName = gender === 'M' ? '财星(妻星)' : '官杀星(夫星)';
+
+        // 检查某个干支组合是否包含配偶星
+        const checkHasStar = (stem, branch) => (STEMS[stem] === spouseStar || (BRANCHES[branch] && BRANCHES[branch][spouseStar] !== undefined));
         
-        let projectionData = [];
-        for (let i = 1; i <= 10; i++) {
-          let pLn = getPillarOffset(inputs.lnStem, inputs.lnBranch, i - inputs.dyYear);
-          let env = calcEnv(inputs.dyStem, inputs.dyBranch, i, pLn.stem, pLn.branch);
-          projectionData.push({ year: `第${i}年\n${pLn.stem}${pLn.branch}`, score: Number(env.score.toFixed(2)), dScore: Number(env.dContribution.toFixed(2)), yScore: Number(env.yContribution.toFixed(2)) });
+        // 5.1 原局宫位落星
+        let starPositions = [];
+        if (checkHasStar(pillars.yStem, pillars.yBranch)) starPositions.push('年柱');
+        if (checkHasStar(pillars.mStem, pillars.mBranch)) starPositions.push('月柱');
+        if (checkHasStar(pillars.dStem, pillars.dBranch)) starPositions.push('日柱(夫妻宫)');
+        if (checkHasStar(pillars.hStem, pillars.hBranch)) starPositions.push('时柱');
+
+        let marriageTiming = "原局配偶星缺失或微弱，暗示感情缘分来得较晚，或恋爱过程易生波折。";
+        if (starPositions.includes('年柱')) marriageTiming = "配偶星现于年柱，多有早婚或早恋倾向。";
+        else if (starPositions.includes('月柱')) marriageTiming = "配偶星现于月柱，多在正常适婚年龄遇到正缘成婚。";
+        else if (starPositions.includes('时柱')) marriageTiming = "配偶星主要偏于时柱，感情缘分偏晚，晚婚更为平顺。";
+
+        // 5.2 大运流年环境星动 (星位检测)
+        let starEnvAlerts = [];
+        if (checkHasStar(activeDaYun.stem, activeDaYun.branch)) {
+          starEnvAlerts.push(`【大运】带有${spouseStarName}，此十年周期为感情缘分的活跃期`);
+        }
+        if (checkHasStar(activeLiuNian.stem, activeLiuNian.branch)) {
+          starEnvAlerts.push(`【流年】引动${spouseStarName}，星位显现，单身者极易遇新缘分，已婚者需关注配偶关系及烂桃花风险`);
         }
 
-        setQuantData({ base, dmElement, R: Number(R.toFixed(4)), isStrong, dmType, K, currentEnv, projectionData });
-      };
+        // 5.3 夫妻宫受力分析 (宫位检测)
+        let spousePalace = pillars.dBranch;
+        let palaceAlerts = [], curEnvAlerts = [];
+        const analyzePalaceRelation = (targetZhi, label, isEnv = false) => {
+          if (targetZhi === spousePalace && !isEnv) return;
+          let rels = checkZhiRelation(spousePalace, targetZhi);
+          if (rels.length > 0) {
+            let msg = `${label}[${targetZhi}]与夫妻宫[${spousePalace}]相${rels.join('、')}`;
+            if (isEnv) curEnvAlerts.push(msg); else palaceAlerts.push(msg);
+          }
+        };
 
-      useEffect(() => { runQuantAnalysis(); }, []);
+        analyzePalaceRelation(pillars.yBranch, '原局年支');
+        analyzePalaceRelation(pillars.mBranch, '原局月支');
+        analyzePalaceRelation(pillars.hBranch, '原局时支');
+        analyzePalaceRelation(activeDaYun.branch, '大运地支', true);
+        analyzePalaceRelation(activeLiuNian.branch, '流年地支', true);
 
-      const handleChange = (e) => setInputs(prev => ({ ...prev, [e.target.name]: e.target.name === 'dyYear' ? Number(e.target.value) : e.target.value }));
+        // 5.4 组装多段结构化报告
+        let reportSections = [
+          {
+            type: 'base',
+            icon: <InfoIcon />,
+            text: `您是${gender === 'M' ? '男' : '女'}命，日主为${dmElement}，代表配偶的${spouseStarName}五行为【${spouseStar}】。${starPositions.length > 0 ? `星落于${starPositions.join('、')}，` : ''}${marriageTiming}`
+          },
+          {
+            type: 'palace',
+            icon: palaceAlerts.length > 0 ? <AlertCircleIcon /> : <InfoIcon />,
+            text: palaceAlerts.length > 0 
+              ? `原局夫妻宫受内部结构引动：${palaceAlerts.join('；')}。原生感情架构易受牵绊（见合多情缘纠葛，见冲刑波折不稳）。` 
+              : `原局夫妻宫未见明显刑冲合害，自身感情基石相对稳固。`
+          }
+        ];
 
-      if (!quantData) return <div className="min-h-screen flex items-center justify-center text-white">正在加载量化引擎...</div>;
+        // 动态环境反馈段落
+        if (starEnvAlerts.length > 0 || curEnvAlerts.length > 0) {
+          let envText = "此时空节点需特别留意：";
+          if (starEnvAlerts.length > 0) envText += `星动👉 ${starEnvAlerts.join('；')}。`;
+          if (curEnvAlerts.length > 0) envText += `宫动👉 ${curEnvAlerts.join('；')}。`;
+          envText += "星宫受引，意味着该时期的婚姻关系面临突发变动或深刻调整。";
+          
+          reportSections.push({
+            type: 'alert',
+            icon: <AlertCircleIcon />,
+            text: envText
+          });
+        } else {
+          reportSections.push({
+            type: 'safe',
+            icon: <InfoIcon />,
+            text: `当前选定的年月内，配偶星蛰伏，且夫妻宫环境相对安静，未受外部强力引动。`
+          });
+        }
 
+        return {
+          base, dmElement, R: Number(R.toFixed(4)), dmType, K, currentEnv, projectionData,
+          reportSections, activeDaYun, activeLiuNian
+        };
+      }, [baziModel, activeDyIdx, activeLnIdx]);
+
+      // 图表数据格式化
       const maxBaseVal = Math.max(...ELEMENTS.map(el => quantData.base[el]));
       const radarDomainMax = Math.max(0.5, Math.ceil(maxBaseVal * 10) / 10);
       const radarData = ELEMENTS.map(el => ({ subject: el, A: Number(quantData.base[el].toFixed(3)), fullMark: radarDomainMax }));
@@ -158,134 +326,193 @@
       else if (s <= -0.5) { label = '小凶 (REDUCE)'; color = 'text-rose-400'; }
 
       return (
-        <div className="min-h-screen p-4 md:p-8 font-sans">
-          <header className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-            <div className="flex items-center space-x-3">
-              <ActivityIcon />
-              <h1 className="text-2xl font-bold tracking-wider text-slate-100">八字量化分析终端 <span className="text-xs text-slate-500 font-mono ml-2">V 1.0.0_beta</span></h1>
+        <div className="p-4 md:p-8">
+          <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-800 pb-4 mb-6 gap-4">
+            <div className="flex items-center space-x-4">
+              <button onClick={onBack} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white" title="返回重新排盘">
+                <ArrowLeftIcon />
+              </button>
+              <div>
+                <h1 className="text-xl font-bold tracking-wider text-slate-100 flex items-center">八字量化分析终端 <span className="text-xs bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded ml-3 font-mono">V 2.1</span></h1>
+                <div className="text-xs text-slate-500 mt-1 space-x-3">
+                  <span>命局：{`${baziModel.pillars.yStem}${baziModel.pillars.yBranch} ${baziModel.pillars.mStem}${baziModel.pillars.mBranch} ${baziModel.pillars.dStem}${baziModel.pillars.dBranch} ${baziModel.pillars.hStem}${baziModel.pillars.hBranch}`}</span>
+                  <span>|</span>
+                  <span>性别：{baziModel.gender === 'M' ? '乾造 (男)' : '坤造 (女)'}</span>
+                </div>
+              </div>
             </div>
-            <button onClick={runQuantAnalysis} className="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2 rounded shadow-lg shadow-cyan-900/50 flex items-center space-x-2 font-mono font-bold transition-all">
-              <ZapIcon /><span>RUN_MODEL</span>
-            </button>
+            
+            <div className="flex bg-slate-900 border border-slate-700 rounded-lg p-1 shadow-lg">
+               <select value={activeDyIdx} onChange={handleDyChange} className="bg-slate-800 text-cyan-400 text-sm font-bold p-2 outline-none border-r border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors">
+                 {baziModel.daYuns.map((dy, idx) => (
+                   <option key={idx} value={idx}>{dy.startYear}-{dy.endYear} {dy.stem}{dy.branch}大运</option>
+                 ))}
+               </select>
+               <select value={activeLnIdx} onChange={e => setActiveLnIdx(Number(e.target.value))} className="bg-slate-800 text-slate-200 text-sm p-2 outline-none cursor-pointer hover:bg-slate-700 transition-colors">
+                 {baziModel.daYuns[activeDyIdx].liuNians.map((ln, idx) => (
+                   <option key={idx} value={idx}>{ln.year} {ln.stem}{ln.branch}年</option>
+                 ))}
+               </select>
+            </div>
           </header>
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-            <div className="xl:col-span-3 space-y-6">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
-                <h2 className="text-sm font-bold text-slate-400 mb-4 flex items-center"><DatabaseIcon /> INPUT_PARAMETERS [命局与环境]</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs text-slate-500 mb-1 block">四柱输入 (年/月/日/时)</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {['yStem','mStem','dStem','hStem'].map(pos => <select key={pos} name={pos} value={inputs[pos]} onChange={handleChange} className="bg-slate-800 border border-slate-700 text-sm rounded p-1 text-center outline-none focus:border-cyan-500">{STEMS_LIST.map(s => <option key={s}>{s}</option>)}</select>)}
-                      {['yBranch','mBranch','dBranch','hBranch'].map(pos => <select key={pos} name={pos} value={inputs[pos]} onChange={handleChange} className="bg-slate-800 border border-slate-700 text-sm rounded p-1 text-center outline-none focus:border-cyan-500">{BRANCHES_LIST.map(b => <option key={b}>{b}</option>)}</select>)}
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t border-slate-800">
-                    <label className="text-xs text-slate-500 mb-1 block">当前大运</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <select name="dyStem" value={inputs.dyStem} onChange={handleChange} className="bg-slate-800 border border-slate-700 text-sm rounded p-1 text-center outline-none focus:border-cyan-500">{STEMS_LIST.map(s => <option key={s}>{s}</option>)}</select>
-                      <select name="dyBranch" value={inputs.dyBranch} onChange={handleChange} className="bg-slate-800 border border-slate-700 text-sm rounded p-1 text-center outline-none focus:border-cyan-500">{BRANCHES_LIST.map(b => <option key={b}>{b}</option>)}</select>
-                      <select name="dyYear" value={inputs.dyYear} onChange={handleChange} className="bg-slate-800 border border-slate-700 text-sm rounded p-1 text-center outline-none focus:border-cyan-500">{[1,2,3,4,5,6,7,8,9,10].map(y => <option key={y} value={y}>第{y}年</option>)}</select>
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t border-slate-800">
-                    <label className="text-xs text-slate-500 mb-1 block">目标流年</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <select name="lnStem" value={inputs.lnStem} onChange={handleChange} className="bg-slate-800 border border-slate-700 text-sm rounded p-1 text-center outline-none focus:border-cyan-500">{STEMS_LIST.map(s => <option key={s}>{s}</option>)}</select>
-                      <select name="lnBranch" value={inputs.lnBranch} onChange={handleChange} className="bg-slate-800 border border-slate-700 text-sm rounded p-1 text-center outline-none focus:border-cyan-500">{BRANCHES_LIST.map(b => <option key={b}>{b}</option>)}</select>
-                    </div>
-                  </div>
-                </div>
+          {/* 核心指标与预警 */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-6">
+            <div className="xl:col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl flex flex-col justify-center items-center relative overflow-hidden">
+              <div className="text-slate-400 text-sm mb-1">年度运势 S_t <span className="text-xs text-slate-500 ml-1">({quantData.activeLiuNian.year}年)</span></div>
+              <div className={`text-6xl font-mono font-black my-3 ${s > 0 ? 'text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'text-red-400 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`}>
+                {s > 0 ? '+' : ''}{s.toFixed(2)}
+              </div>
+              <div className={`text-sm font-bold tracking-wider ${color}`}>{label}</div>
+              
+              <div className="mt-5 w-full grid grid-cols-2 gap-4 text-center border-t border-slate-800 pt-5">
+                <div><div className="text-xs text-slate-500 mb-1">日主形态</div><div className="text-lg text-slate-200 font-bold">{quantData.dmElement} • {quantData.dmType}</div></div>
+                <div><div className="text-xs text-slate-500 mb-1">系统R因子</div><div className="text-lg text-slate-200 font-mono">{quantData.R > 0 ? '+'+quantData.R : quantData.R}</div></div>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-center items-center relative overflow-hidden">
-                <div className="text-slate-400 text-sm mb-1">综合运势评分 S_t <span className="text-xs ml-1 text-slate-500">[-5.0 ~ 5.0]</span></div>
-                <div className={`text-5xl font-mono font-black my-2 ${s > 0 ? 'text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'text-red-400 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]'}`}>
-                  {s > 0 ? '+' : ''}{s.toFixed(2)}
+              {Math.abs(quantData.R) >= 0.3 && (
+                <div className="absolute top-0 left-0 w-full h-full bg-slate-900/90 backdrop-blur-md border-2 border-rose-500/50 flex flex-col items-center justify-center p-4 z-10 text-center animate-pulse">
+                  <ShieldAlertIcon />
+                  <div className="text-rose-400 font-bold text-sm">特殊命格预警 (极值失衡)</div>
+                  <div className="text-xs text-slate-300 mt-2">R 因子达 ({quantData.R})，疑似「从格/专旺」。<br/><span className="text-rose-400 font-bold">均衡K值策略可能失效！</span></div>
+                  <button onClick={(e) => e.currentTarget.parentElement.style.display='none'} className="mt-4 text-xs bg-slate-800 hover:bg-slate-700 px-4 py-1.5 rounded text-slate-300 border border-slate-600 transition-colors">忽略风险继续</button>
                 </div>
-                <div className={`text-sm font-bold tracking-wider ${color}`}>{label}</div>
-                <div className="mt-4 w-full grid grid-cols-2 gap-4 text-center border-t border-slate-800 pt-4">
-                  <div><div className="text-xs text-slate-500 mb-1">日主形态</div><div className="text-lg text-slate-200 font-bold">{quantData.dmElement} • {quantData.dmType}</div></div>
-                  <div><div className="text-xs text-slate-500 mb-1">R 因子 <span className="text-[10px] text-slate-600">[-1.0~1.0]</span></div><div className="text-lg text-slate-200 font-mono">{quantData.R > 0 ? '+'+quantData.R : quantData.R}</div></div>
-                </div>
-                {Math.abs(quantData.R) >= 0.3 && (
-                  <div className="absolute top-0 left-0 w-full h-full bg-slate-900/90 backdrop-blur-sm border-2 border-rose-500/50 flex flex-col items-center justify-center p-4 z-10 text-center animate-pulse">
-                    <ShieldAlertIcon />
-                    <div className="text-rose-400 font-bold text-sm">特殊命格预警 (R-Factor Alert)</div>
-                    <div className="text-xs text-slate-300 mt-2">检测到 R 因子极值 ({quantData.R})。<br/>可能为「从格」或「专旺格」。<br/><span className="text-rose-400 font-bold">量化均衡K值策略大概率失效！</span></div>
-                    <button onClick={(e) => e.currentTarget.parentElement.style.display='none'} className="mt-3 text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded text-slate-300 border border-slate-600">忽略并继续 (IGNORE)</button>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
-            <div className="xl:col-span-9 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl h-72">
-                  <h2 className="text-sm font-bold text-slate-400 mb-2">基座五行雷达 [命局特征 B_i]</h2>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                      <PolarGrid stroke="#334155" />
-                      <PolarRadiusAxis angle={90} domain={[0, radarDomainMax]} tick={false} axisLine={false} />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b' }} />
-                      <Radar name="能量分布" dataKey="A" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.3} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl h-72">
-                  <h2 className="text-sm font-bold text-slate-400 mb-2">因子系数分布 [喜用神 K]</h2>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={kBarData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                      <XAxis dataKey="name" stroke="#64748b" tick={{fill: '#94a3b8'}} />
-                      <YAxis stroke="#64748b" tick={{fill: '#94a3b8'}} domain={[-1, 1]} />
-                      <Tooltip cursor={{fill: '#1e293b'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b' }} />
-                      <ReferenceLine y={0} stroke="#475569" />
-                      <Bar dataKey="K值" radius={[4, 4, 4, 4]}>{kBarData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}</Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+            <div className="xl:col-span-9 bg-slate-900 border border-pink-900/40 rounded-xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-center">
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-pink-500 to-purple-500"></div>
+              <h2 className="text-base font-bold text-pink-400 mb-4 flex items-center">
+                <HeartIcon /> 感情时空动态解析 (星宫同看)
+              </h2>
+              <div className="flex flex-col space-y-3">
+                {quantData.reportSections.map((section, idx) => (
+                  <div key={idx} className={`text-sm leading-relaxed tracking-wide p-3 rounded-lg border ${section.type === 'alert' ? 'bg-rose-950/20 border-rose-900/50 text-rose-200' : 'bg-slate-950/50 border-slate-800/50 text-slate-300'}`}>
+                    <span className="font-semibold">{section.icon} </span>
+                    {section.text}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 图表展示区 */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div className="xl:col-span-8 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl h-96">
+              <h2 className="text-sm font-bold text-slate-400 mb-2">【{quantData.activeDaYun.stem}{quantData.activeDaYun.branch}大运】 10年运势波动曲线</h2>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={quantData.projectionData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="year" stroke="#64748b" tick={{fill: '#64748b', fontSize: 11}} />
+                  <YAxis stroke="#64748b" tick={{fill: '#64748b', fontSize: 12}} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff' }} itemStyle={{ color: '#e2e8f0' }} />
+                  <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
+                  
+                  {/* 高亮当前选中的流年 */}
+                  <ReferenceLine x={`${quantData.activeLiuNian.year}\n${quantData.activeLiuNian.stem}${quantData.activeLiuNian.branch}`} stroke="#06b6d4" strokeDasharray="3 3" label={{ position: 'top', value: 'Target', fill: '#06b6d4', fontSize: 12, fontWeight: 'bold' }} />
+                  
+                  <Line type="monotone" dataKey="score" name="总运势分" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', stroke: '#0f172a', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="dScore" name="大运环境引力" stroke="#8b5cf6" strokeWidth={1} strokeDasharray="5 5" dot={false} />
+                  <Line type="monotone" dataKey="yScore" name="流年环境引力" stroke="#3b82f6" strokeWidth={1} strokeDasharray="5 5" dot={false} />
+                  <Legend wrapperStyle={{ fontSize: '12px', bottom: -5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="xl:col-span-4 space-y-6 flex flex-col">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-1">
+                <h2 className="text-sm font-bold text-slate-400 mb-2">基座五行雷达 [命局特征 B_i]</h2>
+                <ResponsiveContainer width="100%" height="80%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
+                    <PolarGrid stroke="#334155" />
+                    <PolarRadiusAxis angle={90} domain={[0, radarDomainMax]} tick={false} axisLine={false} />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b' }} />
+                    <Radar name="能量分布" dataKey="A" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.3} />
+                  </RadarChart>
+                </ResponsiveContainer>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl h-80">
-                  <h2 className="text-sm font-bold text-slate-400 mb-2">环境能量向量 [大运与流年]</h2>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={vectorData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
-                      <XAxis type="number" stroke="#64748b" tick={{fill: '#94a3b8'}} />
-                      <YAxis dataKey="name" type="category" stroke="#64748b" tick={{fill: '#94a3b8'}} />
-                      <Tooltip cursor={{fill: '#1e293b'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b' }} />
-                      <Legend wrapperStyle={{ fontSize: '12px' }}/>
-                      <Bar dataKey="大运能量" stackId="a" fill="#8b5cf6" />
-                      <Bar dataKey="流年能量" stackId="a" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl h-80">
-                  <h2 className="text-sm font-bold text-slate-400 mb-2">当前大运10年推演曲线 [Timeline]</h2>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={quantData.projectionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                      <XAxis dataKey="year" stroke="#64748b" tick={{fill: '#64748b', fontSize: 10}} />
-                      <YAxis stroke="#64748b" tick={{fill: '#64748b', fontSize: 12}} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff' }} itemStyle={{ color: '#e2e8f0' }} />
-                      <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
-                      <ReferenceLine x={`第${inputs.dyYear}年\n${inputs.lnStem}${inputs.lnBranch}`} stroke="#06b6d4" strokeDasharray="3 3" label={{ position: 'top', value: 'Current', fill: '#06b6d4', fontSize: 10 }} />
-                      <Line type="monotone" dataKey="score" name="综合评分" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', stroke: '#0f172a', strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                      <Line type="monotone" dataKey="dScore" name="大运贡献" stroke="#8b5cf6" strokeWidth={1} strokeDasharray="5 5" dot={false} />
-                      <Line type="monotone" dataKey="yScore" name="流年贡献" stroke="#3b82f6" strokeWidth={1} strokeDasharray="5 5" dot={false} />
-                      <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-1">
+                <h2 className="text-sm font-bold text-slate-400 mb-2">当前环境向量分布 ({quantData.activeLiuNian.year})</h2>
+                <ResponsiveContainer width="100%" height="80%">
+                  <BarChart data={vectorData} layout="vertical" margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+                    <XAxis type="number" stroke="#64748b" tick={{fill: '#94a3b8', fontSize: 10}} />
+                    <YAxis dataKey="name" type="category" stroke="#64748b" tick={{fill: '#94a3b8'}} />
+                    <Tooltip cursor={{fill: '#1e293b'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b' }} />
+                    <Bar dataKey="大运能量" stackId="a" fill="#8b5cf6" />
+                    <Bar dataKey="流年能量" stackId="a" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           </div>
         </div>
       );
+    }
+
+    // --- 主应用控制 ---
+    function App() {
+      const [view, setView] = useState('input');
+      const [baziModel, setBaziModel] = useState(null);
+
+      const generateModel = (formData) => {
+        const [year, month, day] = formData.date.split('-').map(Number);
+        const [hour, minute] = formData.time.split(':').map(Number);
+        
+        const solar = window.Solar.fromYmdHms(year, month, day, hour, minute, 0);
+        const lunar = solar.getLunar();
+        const bazi = lunar.getEightChar();
+        
+        const pillars = {
+          yStem: bazi.getYearGan(), yBranch: bazi.getYearZhi(),
+          mStem: bazi.getMonthGan(), mBranch: bazi.getMonthZhi(),
+          dStem: bazi.getDayGan(), dBranch: bazi.getDayZhi(),
+          hStem: bazi.getTimeGan(), hBranch: bazi.getTimeZhi()
+        };
+
+        const yun = bazi.getYun(formData.gender === 'M' ? 1 : 0);
+        const daYunsList = yun.getDaYun();
+        
+        const parsedDaYuns = daYunsList.map(dy => {
+          return {
+            ganZhi: dy.getGanZhi(),
+            stem: dy.getGanZhi().charAt(0),
+            branch: dy.getGanZhi().charAt(1),
+            startYear: dy.getStartYear(),
+            endYear: dy.getEndYear(),
+            liuNians: dy.getLiuNian().map(ln => ({
+              year: ln.getYear(),
+              ganZhi: ln.getGanZhi(),
+              stem: ln.getGanZhi().charAt(0),
+              branch: ln.getGanZhi().charAt(1)
+            }))
+          };
+        }).filter(dy => dy.ganZhi !== '' && dy.liuNians.length > 0);
+
+        const currentYear = new Date().getFullYear();
+        let defaultDyIdx = parsedDaYuns.findIndex(dy => currentYear >= dy.startYear && currentYear <= dy.endYear);
+        if (defaultDyIdx === -1) defaultDyIdx = 0;
+
+        let defaultLnIdx = parsedDaYuns[defaultDyIdx].liuNians.findIndex(ln => ln.year === currentYear);
+        if (defaultLnIdx === -1) defaultLnIdx = 0;
+
+        setBaziModel({
+          gender: formData.gender,
+          pillars,
+          dmElement: STEMS[pillars.dStem],
+          daYuns: parsedDaYuns,
+          defaultDyIdx,
+          defaultLnIdx
+        });
+        
+        setView('result');
+      };
+
+      return view === 'input' 
+        ? <InputView onGenerate={generateModel} /> 
+        : <ResultDashboard baziModel={baziModel} onBack={() => setView('input')} />;
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
