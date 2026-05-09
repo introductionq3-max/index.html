@@ -3,24 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>八字量化分析终端 V2.5</title>
+  <title>八字量化分析终端 V2.7</title>
   
   <!-- 引入 Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
   <!-- 引入核心依赖库 -->
-  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/recharts@2.1.12/umd/Recharts.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.1.12/Recharts.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin="anonymous"></script>
 
   <style>
     ::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.6; cursor: pointer; }
     ::-webkit-calendar-picker-indicator:hover { opacity: 1; }
-    /* 古典字体支持 */
     .font-serif-bazi { font-family: "Noto Serif SC", "SimSun", "STSong", serif; }
+    /* 预警动画 */
+    @keyframes pulse-red { 0%, 100% { opacity: 1; border-color: rgba(239,68,68,0.5); } 50% { opacity: 0.8; border-color: rgba(239,68,68,1); } }
+    .animate-danger { animation: pulse-red 2s infinite; }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-200 min-h-screen">
@@ -31,7 +33,6 @@
       document.getElementById('root').innerHTML = `
         <div style="color: #ef4444; padding: 20px; text-align: center; font-family: sans-serif; margin-top: 50px;">
           <h2>⚠️ 核心资源加载失败</h2>
-          <p>由于您的网络环境或浏览器安全策略，React 引擎未能成功下载。</p>
           <p>请刷新页面重试，或尝试关闭广告拦截插件。</p>
         </div>
       `;
@@ -56,6 +57,10 @@
     const MapPinIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-400"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>;
     const GridIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-amber-500"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
     const TrophyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-yellow-500"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>;
+    const StethoscopeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-emerald-400"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path><circle cx="20" cy="10" r="2"></circle></svg>;
+    const BriefcaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-blue-400"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>;
+    const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-indigo-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
+    const WarnIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
 
     // --- 常量与基础数据字典 ---
     const ELEMENTS = ["木", "火", "土", "金", "水"];
@@ -79,11 +84,9 @@
       刑: [['子','卯'], ['卯','子'], ['寅','巳'], ['巳','申'], ['申','寅'], ['丑','未'], ['未','戌'], ['戌','丑'], ['辰','辰'], ['午','午'], ['酉','酉'], ['亥','亥']]
     };
 
-    // 阴阳字典
     const YANG_CHARS = ['甲', '丙', '戊', '庚', '壬', '子', '寅', '辰', '午', '申', '戌'];
     const YIN_CHARS = ['乙', '丁', '己', '辛', '癸', '丑', '卯', '巳', '未', '酉', '亥'];
 
-    // 藏干本气五行及阴阳字典（用于十神精确计算）
     const CHAR_YIN_YANG = {
       甲:1, 乙:-1, 丙:1, 丁:-1, 戊:1, 己:-1, 庚:1, 辛:-1, 壬:1, 癸:-1,
       子:-1, 丑:-1, 寅:1, 卯:-1, 辰:1, 巳:1, 午:-1, 未:-1, 申:1, 酉:-1, 戌:1, 亥:1
@@ -91,6 +94,22 @@
     const WU_XING = {
       甲:'木', 乙:'木', 丙:'火', 丁:'火', 戊:'土', 己:'土', 庚:'金', 辛:'金', 壬:'水', 癸:'水',
       子:'水', 丑:'土', 寅:'木', 卯:'木', 辰:'土', 巳:'火', 午:'火', 未:'土', 申:'金', 酉:'金', 戌:'土', 亥:'水'
+    };
+
+    // 盲派地支象法解析字典
+    const DIZHI_XIANG = {
+      子: { health: '膀胱、泌尿生殖系统、血液', career: '物流运输、进出口贸易、流动性商业、江湖玄学', personality: '聪明大慧、具有特殊技能，心思深沉' },
+      丑: { health: '脾胃、胞宫、腹部结块、糖尿病', career: '厂矿煤炭、监狱军营、银行金库、地下隐蔽行业', personality: '隐忍内敛，易在暗处行事' },
+      寅: { health: '头部、四肢、肝胆、神经筋脉', career: '政府机关(公门)、文化场所、神堂庙宇、木材', personality: '气质高雅威严，为人正直偏严厉' },
+      卯: { health: '肝胆、手指筋络、腰部毛发', career: '建材建筑、车船机构、纺织业、网络通信边界', personality: '心思细腻敏感，有时易陷入纠缠' },
+      辰: { health: '内分泌系统、肩胸肌肉、胃部', career: '大机构(大型平台)、车辆重工、网络中医药', personality: '思想活跃扬发，包容性强但也容易固执' },
+      巳: { health: '三焦经、心脏、咽喉、神经齿面', career: '互联网自媒体、影视传媒、文化教育、冶炼光电', personality: '性格多变，充满幻想，具文化艺术气息' },
+      午: { health: '小肠、心脏眼目、血液系统', career: '体育竞技场、冶炼大厦、剧院闹市、语言广告', personality: '热情奔放，表现欲强，但也容易激动狂躁' },
+      未: { health: '脾胃、腹腔、脊梁手腕', career: '建筑营造、化工医药、酒店休闲娱乐、庭院', personality: '注重休闲情趣，随性且带有一定玄学缘分' },
+      申: { health: '肺部、大肠、脊椎骨骼(骨钙)', career: '军队司法、金融数位、医院西药、机械五金', personality: '自带威严冷硬之气，内里也好动嬉戏' },
+      酉: { health: '骨骼、经血、肺肋气管', career: '信息传媒、法律技术、钟表仪器、色情娱乐', personality: '精细敏感，洞察力强，容易逢离别伤感' },
+      戌: { health: '心包经、命门、背部胃部、腿足', career: '建筑高楼、军火牢狱、化工数学、互联网、市场', personality: '性格急躁，占有欲较强' },
+      亥: { health: '头部肾脏、血脉尿道、淋巴阑尾', career: '水产酒水、科技运算(数位逻辑)、大厂、仓储', personality: '沉迷深思，心智运算能力强，略带阴郁' }
     };
 
     function getRelation(dm, target) {
@@ -105,7 +124,6 @@
       for (let key in CONTROLS) if (CONTROLS[key] === el) return key;
     }
 
-    // 获取具体的十神名称
     function getSpecificTenGod(dmChar, targetChar) {
       let dmEl = WU_XING[dmChar];
       let tgEl = WU_XING[targetChar];
@@ -120,7 +138,6 @@
       if (CONTROLS[tgEl] === dmEl) return isSameYY ? "七杀" : "正官";
     }
 
-    // 获取地支的“本气”
     function getDominantElement(branch) {
       let maxVal = 0;
       let dom = '';
@@ -144,14 +161,13 @@
       return [...new Set(rels)];
     }
 
-    // 五行颜色映射函数
     const getElementColorClass = (el) => {
       switch(el) {
-        case '木': return 'text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]';  // 绿
-        case '火': return 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]';    // 大红
-        case '土': return 'text-[#8b4513] drop-shadow-[0_0_8px_rgba(139,69,19,0.4)]';  // 棕 (SaddleBrown)
-        case '金': return 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]';    // 白
-        case '水': return 'text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]';  // 蓝
+        case '木': return 'text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]';  
+        case '火': return 'text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]';    
+        case '土': return 'text-[#8b4513] drop-shadow-[0_0_8px_rgba(139,69,19,0.4)]';  
+        case '金': return 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]';    
+        case '水': return 'text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]';  
         default: return 'text-slate-200';
       }
     };
@@ -178,7 +194,7 @@
             <div className="flex flex-col items-center mb-8">
               <ActivityIcon />
               <h1 className="text-2xl font-bold tracking-widest text-slate-100 mt-4">八字量化分析终端</h1>
-              <p className="text-slate-500 text-xs mt-1 font-mono">Bazi Quantitative Model V2.5</p>
+              <p className="text-slate-500 text-xs mt-1 font-mono">Bazi Quantitative Model V2.7</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -245,7 +261,6 @@
           for (let el in branchData) base[el] += branchData[el] * weight;
         });
 
-        // 2. 日主强弱
         let rComponents = { 比劫: 0, 印: 0, 食伤: 0, 财: 0, 官杀: 0 };
         for (let el of ELEMENTS) rComponents[getRelation(dmElement, el)] += base[el];
         let R = (rComponents['比劫'] + rComponents['印']) - (rComponents['食伤'] + rComponents['财'] + rComponents['官杀']);
@@ -264,49 +279,35 @@
           K[el] = Number((weight * sign).toFixed(4));
         }
 
-        // --- 核心模块：6. 命局层次评估逻辑 (格局、用神、阴阳、坏点) ---
-        let rankData = { level: '', color: '', desc: '' };
+        // --- 核心模块：6. 命局层次评估逻辑 ---
+        let rankData = { level: '', color: '', desc: '', isHang: false };
         
-        // 阴阳平衡检测
         const baziChars = [pillars.yStem, pillars.yBranch, pillars.mStem, pillars.mBranch, pillars.dStem, pillars.dBranch, pillars.hStem, pillars.hBranch];
         const isPureYang = baziChars.every(c => YANG_CHARS.includes(c));
         const isPureYin = baziChars.every(c => YIN_CHARS.includes(c));
         const isSpecialGender = (gender === 'M' && isPureYin) || (gender === 'F' && isPureYang);
 
-        // 贴身相克 (坏点探测: 财星坏印, 伤官见官, 枭神夺食)
         let badAlerts = [];
         const checkCombo = (c1, c2) => {
             if (!c1 || !c2) return;
             let tg1 = getSpecificTenGod(pillars.dStem, c1);
             let tg2 = getSpecificTenGod(pillars.dStem, c2);
             let combo = [tg1, tg2];
-            
-            // 财星坏印 (正偏财 见 正偏印)
-            let hasCai = combo.includes('正财') || combo.includes('偏财');
-            let hasYin = combo.includes('正印') || combo.includes('偏印');
-            if (hasCai && hasYin) badAlerts.push('财星坏印');
-            
-            // 伤官见官 (必须是伤官见正官)
+            if ((combo.includes('正财') || combo.includes('偏财')) && (combo.includes('正印') || combo.includes('偏印'))) badAlerts.push('财星坏印');
             if (combo.includes('伤官') && combo.includes('正官')) badAlerts.push('伤官见官');
-            
-            // 枭神夺食 (必须是偏印见食神)
             if (combo.includes('偏印') && combo.includes('食神')) badAlerts.push('枭神夺食');
         };
-        // 同柱上下克战
         checkCombo(pillars.yStem, pillars.yBranch);
         checkCombo(pillars.mStem, pillars.mBranch);
         checkCombo(pillars.dStem, pillars.dBranch);
         checkCombo(pillars.hStem, pillars.hBranch);
-        // 贴身干支相克 (天干相邻, 地支相邻)
-        checkCombo(pillars.yStem, pillars.mStem); // 年月干
-        checkCombo(pillars.yBranch, pillars.mBranch); // 年月支
-        checkCombo(pillars.mBranch, pillars.dBranch); // 月日支
-        checkCombo(pillars.dBranch, pillars.hBranch); // 日时支
-        
+        checkCombo(pillars.yStem, pillars.mStem); 
+        checkCombo(pillars.yBranch, pillars.mBranch); 
+        checkCombo(pillars.mBranch, pillars.dBranch); 
+        checkCombo(pillars.dBranch, pillars.hBranch); 
         badAlerts = [...new Set(badAlerts)];
         let badPointsCount = badAlerts.length;
 
-        // 【新增核心检测】表面八字五行统计 (不看藏干杂气，用于最高优先级判定特殊格局)
         const surfaceElements = [
           WU_XING[pillars.yStem], getDominantElement(pillars.yBranch),
           WU_XING[pillars.mStem], getDominantElement(pillars.mBranch),
@@ -317,44 +318,73 @@
         surfaceElements.forEach(el => surfaceCounts[el] = (surfaceCounts[el] || 0) + 1);
         let sortedSurface = Object.entries(surfaceCounts).sort((a, b) => b[1] - a[1]);
         let surfaceTop2Sum = sortedSurface[0][1] + (sortedSurface.length > 1 ? sortedSurface[1][1] : 0);
-        let isSurfaceHang = surfaceTop2Sum >= 7; // 8个字里有7个以上属于前两大五行
+        let isSurfaceHang = surfaceTop2Sum >= 7;
 
-        // 五行力量排序
         let sortedBase = ELEMENTS.map(el => ({ el, val: base[el] })).sort((a, b) => b.val - a.val);
         let top2Sum = sortedBase[0].val + sortedBase[1].val;
         let thirdVal = sortedBase.length > 2 ? sortedBase[2].val : 0;
-        
-        // 获取全局出现的本气五行种类数量
-        let chartElements = new Set([
-          WU_XING[pillars.yStem], getDominantElement(pillars.yBranch),
-          WU_XING[pillars.mStem], getDominantElement(pillars.mBranch),
-          WU_XING[pillars.dStem], getDominantElement(pillars.dBranch),
-          WU_XING[pillars.hStem], getDominantElement(pillars.hBranch)
-        ]);
+        let chartElements = new Set(surfaceElements);
 
-        // 甄别原局用神
         let yongShens = ELEMENTS.filter(el => K[el] > 0);
         let yongShenPower = yongShens.reduce((sum, el) => sum + base[el], 0);
 
-        // 检测用神是否被冲
         const internalPillars = [pillars.yBranch, pillars.mBranch, pillars.dBranch, pillars.hBranch];
         let clashedYongShen = false;
+        
+        // 疾病三级预警分类容器
+        let healthAlerts = { level1: new Set(), level2: new Set(), level3: new Set() };
+
         for(let i=0; i<internalPillars.length; i++){
           for(let j=i+1; j<internalPillars.length; j++){
-             if (checkZhiRelation(internalPillars[i], internalPillars[j]).includes('冲')) {
-                let hasYsInI = yongShens.some(el => BRANCHES[internalPillars[i]][el] !== undefined);
-                let hasYsInJ = yongShens.some(el => BRANCHES[internalPillars[j]][el] !== undefined);
+             let z1 = internalPillars[i];
+             let z2 = internalPillars[j];
+             let rels = checkZhiRelation(z1, z2);
+             if (rels.includes('冲')) {
+                // 力量对比 (用原局五行总权重替代简单的本气对比，更科学)
+                let p1 = base[getDominantElement(z1)]; 
+                let p2 = base[getDominantElement(z2)];
+                if (p1 > p2) {
+                    healthAlerts.level2.add(z2); // z2 被强力冲，重伤
+                    healthAlerts.level1.add(z1); // z1 主冲，轻微损耗
+                } else if (p2 > p1) {
+                    healthAlerts.level2.add(z1);
+                    healthAlerts.level1.add(z2);
+                } else {
+                    healthAlerts.level1.add(z1); healthAlerts.level1.add(z2); // 势均力敌，两败俱伤但未偏枯
+                }
+                
+                let hasYsInI = yongShens.some(el => BRANCHES[z1][el] !== undefined);
+                let hasYsInJ = yongShens.some(el => BRANCHES[z2][el] !== undefined);
                 if (hasYsInI || hasYsInJ) clashedYongShen = true;
+
+             } else if (rels.includes('刑')) {
+                 healthAlerts.level1.add(z1); healthAlerts.level1.add(z2);
              }
           }
         }
 
-        // 瀑布流判断定级
-        let rawRank = 0; // 5:夯, 4:顶级, 3:人上人, 2:NPC, 1:拉完了
-        
-        // 【修正规则】优先判定夯：原局表面字有7个及以上是最多两种五行，或者权重计算极度偏枯
+        // 岁运健康引动检测
+        const envZhis = [activeDaYun.branch, activeLiuNian.branch];
+        internalPillars.forEach(zhi => {
+            envZhis.forEach(ez => {
+                if (checkZhiRelation(zhi, ez).includes('冲') || checkZhiRelation(zhi, ez).includes('刑')) {
+                    if (healthAlerts.level2.has(zhi) || healthAlerts.level1.has(zhi)) {
+                        // 原局已有伤，岁运再次引动/补刀 -> 升级为 3级高危
+                        healthAlerts.level3.add(zhi);
+                        healthAlerts.level2.delete(zhi);
+                        healthAlerts.level1.delete(zhi);
+                    } else {
+                        // 新的冲克，归入 1 级隐患
+                        healthAlerts.level1.add(zhi);
+                    }
+                }
+            });
+        });
+
+        let rawRank = 0; 
         if (isSurfaceHang || (top2Sum >= 0.80 && thirdVal < 0.20 && chartElements.size <= 3)) {
             rawRank = 5;
+            rankData.isHang = true;
         } else if (yongShenPower <= 0.05 || (yongShenPower <= 0.15 && clashedYongShen)) {
             rawRank = 1;
         } else if (yongShenPower > 0.35 && !clashedYongShen) {
@@ -365,19 +395,15 @@
             rawRank = 2;
         }
 
-        // 【新增规则】坏点降级惩罚 (严格排除 夯 格局，免除其常规降级)
         if (rawRank >= 3 && rawRank < 5 && badPointsCount > 0) {
-            rawRank = 2; // 遭遇核心十神贴身相克，从高层直降为 NPC
+            rawRank = 2; 
         } else if (rawRank === 2 && badPointsCount > 1) {
-            rawRank = 1; // 本就平庸还多个坏点打架，降为最低
+            rawRank = 1; 
         }
 
-        // 写入最终评级描述
         if (rawRank === 5) {
           let mainElsStr = sortedSurface[0][0];
-          if (sortedSurface.length > 1 && sortedSurface[1][1] > 0) {
-              mainElsStr += `】与【${sortedSurface[1][0]}`;
-          }
+          if (sortedSurface.length > 1 && sortedSurface[1][1] > 0) mainElsStr += `】与【${sortedSurface[1][0]}`;
           rankData.level = "夯 (特殊格局)";
           rankData.color = "text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]";
           rankData.desc = `原局五行极度纯粹，天干与地支本气主要由【${mainElsStr}】主导（占据全局 ${surfaceTop2Sum}/8 的绝对数量）。构成“两气成象”或“专旺/从格”等极度特殊的命局。气势磅礴，不受常规生克与藏干杂气约束，已优先免除系统降级惩罚，直接定级为夯。`;
@@ -399,12 +425,75 @@
           rankData.desc = `用神微弱或完全不见，且忌神猖狂。${badPointsCount > 0 ? `叠加【贴身相克】（${badAlerts.join('、')}），内部力量严重相互打架消耗。` : ''}属“气浊神枯”之象。人生路途多艰，需付出极大后天努力方能有所成。`;
         }
 
-        // 阴阳异象标记
         if (isSpecialGender) {
            rankData.desc = `⚠️【异象预警】：您属于“${gender === 'M' ? '男命纯阴' : '女命纯阳'}”，违背自然阴阳交泰之道。此类命盘气场特殊，极易出现大起大落的反常规人生，层次不能单凭常理给级，必须结合大运重新定夺！\n\n` + rankData.desc;
            rankData.level += " (另评)";
            rankData.color = "text-purple-400 drop-shadow-[0_0_10px_rgba(192,132,252,0.8)]";
         }
+
+        // --- 【全新升级】盲派地支象法诊断 (健康/职业/性格) ---
+        let xiangfaReport = { healthLevels: [], career: '', personality: '' };
+
+        // 1. 提取象法-健康 (三级预警)
+        if (healthAlerts.level3.size > 0) {
+            xiangfaReport.healthLevels.push({
+                level: 3, title: `🔴 极度高危预警 (原局重伤 + ${activeLiuNian.year}岁运引动)`,
+                content: `该时段内以下部位遭逢强力摧折，极易诱发急性/突发性重大病变：\n` + 
+                         Array.from(healthAlerts.level3).map(z => `【${z}】: ${DIZHI_XIANG[z].health}`).join('；')
+            });
+        }
+        if (healthAlerts.level2.size > 0) {
+            xiangfaReport.healthLevels.push({
+                level: 2, title: `🟠 原局高度留意 (五行力量悬殊被冲毁)`,
+                content: `先天存在严重的功能损耗或暗疾，需做长期保养干预：\n` + 
+                         Array.from(healthAlerts.level2).map(z => `【${z}】: ${DIZHI_XIANG[z].health}`).join('；')
+            });
+        }
+        if (healthAlerts.level1.size > 0) {
+            xiangfaReport.healthLevels.push({
+                level: 1, title: `🟡 常规低级预警 (轻度冲克/摩擦)`,
+                content: `代表轻微的炎症或体质敏感区：\n` + 
+                         Array.from(healthAlerts.level1).map(z => `【${z}】: ${DIZHI_XIANG[z].health}`).join('；')
+            });
+        }
+        if (xiangfaReport.healthLevels.length === 0) {
+             xiangfaReport.healthLevels.push({
+                level: 0, title: `🟢 健康态势平稳`,
+                content: `原局及当前岁运未见明显内环境冲战，内脏机能平稳，注意常规起居即可。`
+            });
+        }
+
+        // 2. 提取象法-职业 (严格依赖核心用神做功)
+        let coreCareerBranches = [];
+        if (rankData.isHang) {
+            // 夯局：顺势而为，取力量最大的地支作为做功点
+            let domZhi = internalPillars.reduce((a, b) => base[getDominantElement(a)] > base[getDominantElement(b)] ? a : b);
+            coreCareerBranches.push(domZhi);
+        } else {
+            // 正常局：寻找包含最大用神的地支
+            let bestYongShen = yongShens.length > 0 ? yongShens.reduce((a, b) => K[a] > K[b] ? a : b) : null;
+            if (bestYongShen) {
+                // 找出原局中（本气或藏干）含有此用神的地支
+                let yszhis = internalPillars.filter(zhi => BRANCHES[zhi][bestYongShen] !== undefined);
+                // 排序，取其中力量最大（对命主帮助最有力）的作为核心
+                if (yszhis.length > 0) {
+                    yszhis.sort((a, b) => base[getDominantElement(b)] - base[getDominantElement(a)]);
+                    coreCareerBranches.push(yszhis[0]);
+                }
+            }
+        }
+
+        if (coreCareerBranches.length > 0) {
+            let zhi = coreCareerBranches[0];
+            let yongShenName = rankData.isHang ? '顺势气场' : '核心用神';
+            xiangfaReport.career = `系统追踪到您的${yongShenName}做功核心点在【${zhi}】。依据其象义，最利于您获取财富/名望的行业路径锁定为：\n📌 ${DIZHI_XIANG[zhi].career}。`;
+        } else {
+            xiangfaReport.career = `原局核心用神微弱或无地支着力点，职业取向较为宽泛。建议重点关注大运流年带来的五行补给方向。`;
+        }
+
+        // 3. 提取象法-性格 (针对月支社会面与日支内心面)
+        xiangfaReport.personality = `月支【${pillars.mBranch}】(外在社会面具)：${DIZHI_XIANG[pillars.mBranch].personality}；\n日支【${pillars.dBranch}】(真实内心诉求)：${DIZHI_XIANG[pillars.dBranch].personality}。`;
+
 
         // 4. 环境计算函数
         const calcEnv = (dyStem, dyBranch, offsetYear, lnStem, lnBranch) => {
@@ -536,7 +625,7 @@
 
         return {
           base, dmElement, R: Number(R.toFixed(4)), dmType, K, currentEnv, projectionData,
-          reportSections, activeDaYun, activeLiuNian, rankData
+          reportSections, activeDaYun, activeLiuNian, rankData, xiangfaReport
         };
       }, [baziModel, activeDyIdx, activeLnIdx]);
 
@@ -559,7 +648,7 @@
                 <ArrowLeftIcon />
               </button>
               <div>
-                <h1 className="text-xl font-bold tracking-wider text-slate-100 flex items-center">八字量化分析终端 <span className="text-xs bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded ml-3 font-mono">V 2.5</span></h1>
+                <h1 className="text-xl font-bold tracking-wider text-slate-100 flex items-center">八字量化分析终端 <span className="text-xs bg-cyan-900 text-cyan-300 px-2 py-0.5 rounded ml-3 font-mono">V 2.7</span></h1>
                 <div className="text-xs text-slate-500 mt-1">
                   性别：{baziModel.gender === 'M' ? '乾造 (男)' : '坤造 (女)'}
                 </div>
@@ -593,7 +682,6 @@
               </div>
 
               <div className="flex justify-around items-center w-full px-2 mt-auto mb-auto">
-                {/* 年柱 */}
                 <div className="flex flex-col items-center p-3 sm:p-4 bg-slate-800/30 rounded-xl border border-slate-700/50 w-20 sm:w-24 shadow-inner">
                   <span className="text-xs text-slate-500 mb-3 tracking-widest">年柱</span>
                   <span className={`text-3xl sm:text-4xl font-serif-bazi font-bold mb-3 ${getElementColorClass(STEMS[baziModel.pillars.yStem])}`}>
@@ -603,7 +691,6 @@
                     {baziModel.pillars.yBranch}
                   </span>
                 </div>
-                {/* 月柱 */}
                 <div className="flex flex-col items-center p-3 sm:p-4 bg-slate-800/30 rounded-xl border border-slate-700/50 w-20 sm:w-24 shadow-inner">
                   <span className="text-xs text-slate-500 mb-3 tracking-widest">月柱</span>
                   <span className={`text-3xl sm:text-4xl font-serif-bazi font-bold mb-3 ${getElementColorClass(STEMS[baziModel.pillars.mStem])}`}>
@@ -613,7 +700,6 @@
                     {baziModel.pillars.mBranch}
                   </span>
                 </div>
-                {/* 日柱 */}
                 <div className="flex flex-col items-center p-3 sm:p-4 bg-slate-800/60 rounded-xl border-2 border-cyan-700/50 w-24 sm:w-28 shadow-[0_0_20px_rgba(8,145,178,0.15)] transform scale-105">
                   <span className="text-[10px] sm:text-xs text-cyan-400 mb-3 tracking-widest">日主({STEMS[baziModel.pillars.dStem]})</span>
                   <span className={`text-3xl sm:text-4xl font-serif-bazi font-bold mb-3 ${getElementColorClass(STEMS[baziModel.pillars.dStem])}`}>
@@ -623,7 +709,6 @@
                     {baziModel.pillars.dBranch}
                   </span>
                 </div>
-                {/* 时柱 */}
                 <div className="flex flex-col items-center p-3 sm:p-4 bg-slate-800/30 rounded-xl border border-slate-700/50 w-20 sm:w-24 shadow-inner">
                   <span className="text-xs text-slate-500 mb-3 tracking-widest">时柱</span>
                   <span className={`text-3xl sm:text-4xl font-serif-bazi font-bold mb-3 ${getElementColorClass(STEMS[baziModel.pillars.hStem])}`}>
@@ -636,7 +721,6 @@
               </div>
             </div>
 
-            {/* 命局层次评估卡片 */}
             <div className="xl:col-span-5 bg-slate-900 border border-yellow-900/40 rounded-xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-center">
               <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-yellow-500 to-orange-500"></div>
               <h2 className="text-base font-bold text-yellow-500 mb-4 flex items-center tracking-widest">
@@ -653,6 +737,49 @@
               </div>
             </div>
 
+          </div>
+
+          {/* 盲派象法深度解析卡片 (健康/职业/性格) */}
+          <div className="bg-slate-900 border border-emerald-900/30 rounded-xl p-6 shadow-xl relative overflow-hidden mb-6">
+             <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-emerald-500 to-teal-500"></div>
+             <h2 className="text-base font-bold text-emerald-400 mb-5 flex items-center tracking-widest">
+                盲派地支象法诊断 (断象引擎)
+             </h2>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* 健康预警动态面板 */}
+                <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-lg flex flex-col">
+                  <div className="flex items-center text-emerald-400 font-bold mb-3 tracking-widest text-[13px]">
+                    <StethoscopeIcon /> 疾病健康三级预警
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    {quantData.xiangfaReport.healthLevels.map((hl, i) => (
+                      <div key={i} className={`p-2.5 rounded border text-[12px] leading-relaxed
+                        ${hl.level === 3 ? 'bg-red-900/20 border-red-500/50 text-red-300 animate-danger' : 
+                          hl.level === 2 ? 'bg-orange-900/20 border-orange-500/50 text-orange-300' : 
+                          hl.level === 1 ? 'bg-yellow-900/10 border-yellow-500/30 text-yellow-200/80' : 
+                          'bg-slate-800/30 border-slate-700/50 text-slate-400'}`}>
+                         <div className="font-bold mb-1">{hl.title}</div>
+                         <div className="whitespace-pre-wrap opacity-90">{hl.content}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-lg">
+                  <div className="flex items-center text-blue-400 font-bold mb-3 tracking-widest text-[13px]">
+                    <BriefcaseIcon /> 核心用神职业取向
+                  </div>
+                  <div className="text-slate-300 text-[13px] leading-relaxed opacity-90 whitespace-pre-wrap">{quantData.xiangfaReport.career}</div>
+                </div>
+                
+                <div className="bg-slate-950/50 border border-slate-800 p-4 rounded-lg">
+                  <div className="flex items-center text-indigo-400 font-bold mb-3 tracking-widest text-[13px]">
+                    <UserIcon /> 内外性格侧写
+                  </div>
+                  <div className="text-slate-300 text-[13px] leading-relaxed opacity-90 whitespace-pre-wrap">{quantData.xiangfaReport.personality}</div>
+                </div>
+             </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-6">
